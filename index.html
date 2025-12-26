@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>تطبيق السلطان - النسخة الشاملة للهاتف</title>
+    <title>تطبيق السلطان - النسخة الاحترافية</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root {
@@ -26,7 +26,6 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; margin-bottom: 15px;
         }
 
-        /* التنقل العلوي */
         .top-nav { display: flex; justify-content: center; gap: 12px; margin-bottom: 15px; }
         .nav-icon {
             font-size: 1.2rem; cursor: pointer; background: var(--glass);
@@ -34,29 +33,24 @@
             display: flex; align-items: center; justify-content: center; border-radius: 50%;
         }
 
-        /* شريط البحث الموحد */
         .search-box {
             width: 100%; padding: 12px; border-radius: 12px; border: 2px solid var(--accent-gold);
             background: rgba(0,0,0,0.4); color: white; text-align: center; font-size: 1rem; outline: none; margin-bottom: 12px; box-sizing: border-box;
         }
 
-        /* أزرار التبديل بجانب بعضها للهاتف */
         .search-tabs { display: flex; gap: 8px; margin-bottom: 15px; }
         .tab-btn { flex: 1; padding: 10px; border-radius: 10px; border: 1px solid var(--accent-gold); background: none; color: var(--accent-gold); cursor: pointer; font-weight: bold; font-size: 0.85rem; }
         .tab-btn.active { background: var(--accent-gold); color: #0b1a3d; }
 
-        /* نتائج البحث */
         .result-card { background: rgba(255,255,255,0.05); padding: 12px; border-radius: 15px; margin-top: 10px; border-right: 4px solid var(--accent-gold); text-align: right; }
         .info-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.9rem; }
         .label { color: var(--accent-gold); font-weight: bold; }
 
-        /* أزرار النسخ الأفقية */
         .copy-actions { display: flex; gap: 8px; margin-top: 12px; }
-        .btn-copy { flex: 1; padding: 10px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; gap: 4px; }
+        .btn-copy { flex: 1; padding: 12px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; gap: 4px; }
         .btn-all { background: var(--accent-gold); color: #0b1a3d; }
         .btn-id { background: rgba(255,255,255,0.1); color: white; border: 1px solid var(--accent-gold); }
 
-        /* شريط التحميل */
         #progressContainer { width: 100%; background: rgba(255,255,255,0.1); border-radius: 8px; height: 12px; margin: 10px 0; overflow: hidden; display: none; }
         #progressBar { height: 100%; background: var(--accent-gold); width: 0%; transition: 0.3s; }
 
@@ -90,7 +84,7 @@
         <div id="progressText" style="text-align: center; font-size: 0.8rem; margin-bottom: 10px;"></div>
 
         <div id="searchSection" class="card">
-            <input type="text" id="idSearch" class="search-box" placeholder="ابحث بالآيدي السريع..." oninput="searchByID()">
+            <input type="text" inputmode="numeric" id="idSearch" class="search-box" placeholder="ابحث بالآيدي السريع..." oninput="searchByID()">
             <div id="idResult"></div>
         </div>
     </div>
@@ -142,18 +136,10 @@
 
     document.getElementById('fileInp').addEventListener('change', function(e) {
         const file = e.target.files[0];
-        if(!file || fileHistory.some(f => f.name === file.name)) return alert("الملف موجود مسبقاً!");
+        if(!file) return;
 
         const reader = new FileReader();
         document.getElementById('progressContainer').style.display = 'block';
-
-        reader.onprogress = (d) => {
-            if(d.lengthComputable) {
-                const p = Math.round((d.loaded / d.total) * 100);
-                document.getElementById('progressBar').style.width = p + '%';
-                document.getElementById('progressText').innerText = "جاري التحميل: " + p + "%";
-            }
-        };
 
         reader.onload = (e) => {
             const data = new Uint8Array(e.target.result);
@@ -173,12 +159,44 @@
         return u[key] !== undefined ? u[key] : "---";
     }
 
+    // دالة النسخ المحدثة لتعمل على جميع الهواتف
+    async function cp(text) {
+        try {
+            await navigator.clipboard.writeText(text);
+            alert("تم النسخ ✅");
+        } catch (err) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            alert("تم النسخ ✅");
+        }
+    }
+
+    function searchByID() {
+        const input = document.getElementById('idSearch');
+        const v = input.value.trim();
+        const res = document.getElementById('idResult');
+        if(!v) return res.innerHTML = "";
+        
+        const u = masterDB.find(x => String(getValue(x, ["آيدي", "id"])) === v);
+        if(u) {
+            res.innerHTML = buildCard(u);
+            input.blur(); // إخفاء لوحة المفاتيح تلقائياً عند إيجاد النتيجة
+        } else {
+            res.innerHTML = "غير موجود";
+        }
+    }
+
     function buildCard(u) {
         const id = getValue(u, ["آيدي", "id"]);
         const pts = getValue(u, ["نقاط"]);
         const ctr = getValue(u, ["عداد", "عدد"]);
         const usr = getValue(u, ["يوزر"]);
         const full = `الآيدي: ${id}\nالنقاط: ${pts}\nالعداد: ${ctr}\nاليوزر: ${usr}`;
+        
         return `
             <div class="result-card">
                 <div class="info-item"><span class="label">🆔 الآيدي:</span> <span>${id}</span></div>
@@ -186,34 +204,24 @@
                 <div class="info-item"><span class="label">💰 النقاط:</span> <span>${pts}</span></div>
                 <div class="info-item"><span class="label">👤 اليوزر:</span> <span>${usr}</span></div>
                 <div class="copy-actions">
-                    <button class="btn-copy btn-all" onclick="cp('${full}')">📄 نسخ الكل</button>
-                    <button class="btn-copy btn-id" onclick="cp('${id}')">🆔 الآيدي</button>
+                    <button class="btn-copy btn-all" onclick="cp(\`${full}\`)">📄 نسخ الكل</button>
+                    <button class="btn-copy btn-id" onclick="cp(\`${id}\`)">🆔 الآيدي</button>
                 </div>
             </div>`;
-    }
-
-    function cp(t) { navigator.clipboard.writeText(t).then(() => alert("تم النسخ ✅")); }
-
-    function searchByID() {
-        const v = document.getElementById('idSearch').value.trim();
-        const res = document.getElementById('idResult');
-        if(!v) return res.innerHTML = "";
-        const u = masterDB.find(x => String(getValue(x, ["آيدي", "id"])) === v);
-        res.innerHTML = u ? buildCard(u) : "غير موجود";
     }
 
     function switchAdvMode(m) {
         advMode = m;
         document.getElementById('tabC').classList.toggle('active', m === 'counter');
         document.getElementById('tabP').classList.toggle('active', m === 'points');
-        // تصفير النتائج عند التبديل
         document.getElementById('advSearchInput').value = "";
         document.getElementById('advResults').innerHTML = "";
         document.getElementById('advSummary').innerHTML = "";
     }
 
     function executeAdvSearch() {
-        const v = document.getElementById('advSearchInput').value.trim();
+        const input = document.getElementById('advSearchInput');
+        const v = input.value.trim();
         const res = document.getElementById('advResults');
         const sum = document.getElementById('advSummary');
         if(!v) { res.innerHTML = ""; sum.innerHTML = ""; return; }
@@ -224,6 +232,9 @@
         } else {
             matches = masterDB.filter(u => parseFloat(getValue(u, ["نقاط"])) >= parseFloat(v));
         }
+        
+        if(matches.length > 0 && advMode === 'counter') input.blur(); // إخفاء لوحة المفاتيح عند مطابقة العداد
+
         sum.innerHTML = `عدد الأشخاص: (${matches.length})`;
         res.innerHTML = matches.map(u => buildCard(u)).join('');
     }
