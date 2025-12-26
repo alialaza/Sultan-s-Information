@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>تطبيق السلطان - النسخة الشاملة للهاتف</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary-bg: linear-gradient(135deg, #0b1a3d 0%, #2a0a4d 100%);
+            --accent-gold: #f6d77f;
+            --glass: rgba(255, 255, 255, 0.08);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--primary-bg); color: white; margin: 0; padding: 15px;
+            display: flex; justify-content: center; min-height: 100vh; box-sizing: border-box;
+        }
+
+        .container { width: 100%; max-width: 480px; }
+
+        .card {
+            background: var(--glass); backdrop-filter: blur(15px); border-radius: 20px; 
+            padding: 15px; border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; margin-bottom: 15px;
+        }
+
+        /* التنقل العلوي */
+        .top-nav { display: flex; justify-content: center; gap: 12px; margin-bottom: 15px; }
+        .nav-icon {
+            font-size: 1.2rem; cursor: pointer; background: var(--glass);
+            border: 1px solid var(--accent-gold); width: 42px; height: 42px;
+            display: flex; align-items: center; justify-content: center; border-radius: 50%;
+        }
+
+        /* شريط البحث الموحد */
+        .search-box {
+            width: 100%; padding: 12px; border-radius: 12px; border: 2px solid var(--accent-gold);
+            background: rgba(0,0,0,0.4); color: white; text-align: center; font-size: 1rem; outline: none; margin-bottom: 12px; box-sizing: border-box;
+        }
+
+        /* أزرار التبديل بجانب بعضها للهاتف */
+        .search-tabs { display: flex; gap: 8px; margin-bottom: 15px; }
+        .tab-btn { flex: 1; padding: 10px; border-radius: 10px; border: 1px solid var(--accent-gold); background: none; color: var(--accent-gold); cursor: pointer; font-weight: bold; font-size: 0.85rem; }
+        .tab-btn.active { background: var(--accent-gold); color: #0b1a3d; }
+
+        /* نتائج البحث */
+        .result-card { background: rgba(255,255,255,0.05); padding: 12px; border-radius: 15px; margin-top: 10px; border-right: 4px solid var(--accent-gold); text-align: right; }
+        .info-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.9rem; }
+        .label { color: var(--accent-gold); font-weight: bold; }
+
+        /* أزرار النسخ الأفقية */
+        .copy-actions { display: flex; gap: 8px; margin-top: 12px; }
+        .btn-copy { flex: 1; padding: 10px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; gap: 4px; }
+        .btn-all { background: var(--accent-gold); color: #0b1a3d; }
+        .btn-id { background: rgba(255,255,255,0.1); color: white; border: 1px solid var(--accent-gold); }
+
+        /* شريط التحميل */
+        #progressContainer { width: 100%; background: rgba(255,255,255,0.1); border-radius: 8px; height: 12px; margin: 10px 0; overflow: hidden; display: none; }
+        #progressBar { height: 100%; background: var(--accent-gold); width: 0%; transition: 0.3s; }
+
+        .hidden { display: none !important; }
+        .back-btn { background: none; border: 1px solid var(--accent-gold); color: var(--accent-gold); padding: 10px; border-radius: 10px; cursor: pointer; width: 100%; margin-top: 10px; font-weight: bold; }
+
+        #lockScreen { position: fixed; inset: 0; background: var(--primary-bg); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+    </style>
+</head>
+<body>
+
+<div id="lockScreen">
+    <div class="card" style="width: 100%; max-width: 300px;">
+        <h2 style="color: var(--accent-gold);">نظام السلطان</h2>
+        <input type="password" id="passInput" class="search-box" placeholder="كلمة المرور">
+        <button class="back-btn" style="background: var(--accent-gold); color: #0b1a3d;" onclick="checkPassword()">دخول</button>
+    </div>
+</div>
+
+<div class="container hidden" id="mainApp">
+    <div class="top-nav">
+        <div class="nav-icon" onclick="document.getElementById('fileInp').click()">➕</div>
+        <div class="nav-icon" onclick="showPage('filesPage')">📁</div>
+        <div class="nav-icon" onclick="showPage('statsPage')">📊</div>
+        <div class="nav-icon" style="border-color: #ff6b6b;" onclick="deleteAllData()">🗑️</div>
+    </div>
+
+    <div id="homePage">
+        <h1 style="color: var(--accent-gold); text-align: center; margin-bottom: 5px;">السلطان</h1>
+        <div id="progressContainer"><div id="progressBar"></div></div>
+        <div id="progressText" style="text-align: center; font-size: 0.8rem; margin-bottom: 10px;"></div>
+
+        <div id="searchSection" class="card">
+            <input type="text" id="idSearch" class="search-box" placeholder="ابحث بالآيدي السريع..." oninput="searchByID()">
+            <div id="idResult"></div>
+        </div>
+    </div>
+
+    <div id="statsPage" class="hidden card">
+        <h2 style="color: var(--accent-gold);">📊 البحث المتقدم</h2>
+        <div class="search-tabs">
+            <button id="tabC" class="tab-btn active" onclick="switchAdvMode('counter')">بالعداد</button>
+            <button id="tabP" class="tab-btn" onclick="switchAdvMode('points')">بالنقاط</button>
+        </div>
+        <input type="text" id="advSearchInput" class="search-box" placeholder="اكتب القيمة..." oninput="executeAdvSearch()">
+        <div id="advSummary" style="color: var(--accent-gold); font-weight: bold; margin-bottom: 10px;"></div>
+        <div id="advResults"></div>
+        <button class="back-btn" onclick="showPage('homePage')">عودة</button>
+    </div>
+
+    <div id="filesPage" class="hidden card">
+        <h2 style="color: var(--accent-gold);">📁 إدارة الملفات</h2>
+        <div id="filesListContainer"></div>
+        <button class="back-btn" style="background: #ff6b6b; color: white; border: none;" onclick="checkDups()">كشف الآيديات المكررة 🔍</button>
+        <div id="dupResults" class="hidden" style="text-align: right; background: rgba(255,0,0,0.1); padding: 10px; border-radius: 10px; margin-top: 10px; font-size: 0.85rem;"></div>
+        <button class="back-btn" onclick="showPage('homePage')">عودة</button>
+    </div>
+
+    <input type="file" id="fileInp" accept=".xlsx, .xls" hidden>
+</div>
+
+<script>
+    let masterDB = [];
+    let fileHistory = [];
+    let advMode = 'counter';
+    const pass = "m123m";
+
+    window.onload = () => { if(localStorage.getItem('sultanAuth') === "true") showApp(); };
+
+    function checkPassword() {
+        if(document.getElementById('passInput').value === pass) {
+            localStorage.setItem('sultanAuth', "true");
+            showApp();
+        } else alert("خطأ!");
+    }
+
+    function showApp() {
+        document.getElementById('lockScreen').classList.add('hidden');
+        document.getElementById('mainApp').classList.remove('hidden');
+        masterDB = JSON.parse(localStorage.getItem('sultanDB')) || [];
+        fileHistory = JSON.parse(localStorage.getItem('sultanHistory')) || [];
+    }
+
+    document.getElementById('fileInp').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if(!file || fileHistory.some(f => f.name === file.name)) return alert("الملف موجود مسبقاً!");
+
+        const reader = new FileReader();
+        document.getElementById('progressContainer').style.display = 'block';
+
+        reader.onprogress = (d) => {
+            if(d.lengthComputable) {
+                const p = Math.round((d.loaded / d.total) * 100);
+                document.getElementById('progressBar').style.width = p + '%';
+                document.getElementById('progressText').innerText = "جاري التحميل: " + p + "%";
+            }
+        };
+
+        reader.onload = (e) => {
+            const data = new Uint8Array(e.target.result);
+            const wb = XLSX.read(data, {type: 'array'});
+            const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+            masterDB = [...masterDB, ...json];
+            fileHistory.push({name: file.name, count: json.length});
+            localStorage.setItem('sultanDB', JSON.stringify(masterDB));
+            localStorage.setItem('sultanHistory', JSON.stringify(fileHistory));
+            location.reload();
+        };
+        reader.readAsArrayBuffer(file);
+    });
+
+    function getValue(u, keys) {
+        let key = Object.keys(u).find(k => keys.some(fk => k.toLowerCase().includes(fk.toLowerCase())));
+        return u[key] !== undefined ? u[key] : "---";
+    }
+
+    function buildCard(u) {
+        const id = getValue(u, ["آيدي", "id"]);
+        const pts = getValue(u, ["نقاط"]);
+        const ctr = getValue(u, ["عداد", "عدد"]);
+        const usr = getValue(u, ["يوزر"]);
+        const full = `الآيدي: ${id}\nالنقاط: ${pts}\nالعداد: ${ctr}\nاليوزر: ${usr}`;
+        return `
+            <div class="result-card">
+                <div class="info-item"><span class="label">🆔 الآيدي:</span> <span>${id}</span></div>
+                <div class="info-item"><span class="label">🔢 العداد:</span> <span>${ctr}</span></div>
+                <div class="info-item"><span class="label">💰 النقاط:</span> <span>${pts}</span></div>
+                <div class="info-item"><span class="label">👤 اليوزر:</span> <span>${usr}</span></div>
+                <div class="copy-actions">
+                    <button class="btn-copy btn-all" onclick="cp('${full}')">📄 نسخ الكل</button>
+                    <button class="btn-copy btn-id" onclick="cp('${id}')">🆔 الآيدي</button>
+                </div>
+            </div>`;
+    }
+
+    function cp(t) { navigator.clipboard.writeText(t).then(() => alert("تم النسخ ✅")); }
+
+    function searchByID() {
+        const v = document.getElementById('idSearch').value.trim();
+        const res = document.getElementById('idResult');
+        if(!v) return res.innerHTML = "";
+        const u = masterDB.find(x => String(getValue(x, ["آيدي", "id"])) === v);
+        res.innerHTML = u ? buildCard(u) : "غير موجود";
+    }
+
+    function switchAdvMode(m) {
+        advMode = m;
+        document.getElementById('tabC').classList.toggle('active', m === 'counter');
+        document.getElementById('tabP').classList.toggle('active', m === 'points');
+        // تصفير النتائج عند التبديل
+        document.getElementById('advSearchInput').value = "";
+        document.getElementById('advResults').innerHTML = "";
+        document.getElementById('advSummary').innerHTML = "";
+    }
+
+    function executeAdvSearch() {
+        const v = document.getElementById('advSearchInput').value.trim();
+        const res = document.getElementById('advResults');
+        const sum = document.getElementById('advSummary');
+        if(!v) { res.innerHTML = ""; sum.innerHTML = ""; return; }
+
+        let matches = [];
+        if(advMode === 'counter') {
+            matches = masterDB.filter(u => String(getValue(u, ["عداد", "عدد"])) === v);
+        } else {
+            matches = masterDB.filter(u => parseFloat(getValue(u, ["نقاط"])) >= parseFloat(v));
+        }
+        sum.innerHTML = `عدد الأشخاص: (${matches.length})`;
+        res.innerHTML = matches.map(u => buildCard(u)).join('');
+    }
+
+    function showPage(p) {
+        ['homePage', 'filesPage', 'statsPage'].forEach(i => document.getElementById(i).classList.add('hidden'));
+        document.getElementById(p).classList.remove('hidden');
+        if(p === 'filesPage') {
+            document.getElementById('filesListContainer').innerHTML = fileHistory.map(f => `<div class="info-item"><span>📄 ${f.name}</span><span>${f.count} عضو</span></div>`).join('');
+        }
+    }
+
+    function checkDups() {
+        const c = {}; masterDB.forEach(u => { const id = getValue(u, ["آيدي", "id"]); c[id] = (c[id] || 0) + 1; });
+        const d = Object.keys(c).filter(k => c[k] > 1).map(k => `آيدي ${k} مكرر ${c[k]} مرات`);
+        const r = document.getElementById('dupResults'); r.classList.remove('hidden');
+        r.innerHTML = d.length ? d.join('<br>') : "لا يوجد تكرار ✅";
+    }
+
+    function deleteAllData() { if(confirm("مسح كافة البيانات يا علي؟")) { localStorage.clear(); location.reload(); } }
+</script>
+</body>
+</html>
